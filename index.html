@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EA FC 25 Stats</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Kanit', sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-weight: 400;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    label, select, input, button {
+      font-size: 16px;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    button {
+      font-weight: bold;
+      padding: 10px 20px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .danger {
+      background-color: #f44336;
+    }
+
+    .danger:hover {
+      background-color: #e53935;
+    }
+
+    .stats-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 20px;
+      width: 100%;
+      max-width: 1200px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      width: calc(33% - 20px);
+      background-color: #fff;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card h3 {
+      margin-bottom: 10px;
+    }
+
+    .stat-card p {
+      margin: 5px 0;
+    }
+
+    #penalty-score {
+      display: none;
+      margin-top: 10px;
+    }
+
+    .buttons {
+      margin-top: 20px;
+    }
+
+    .buttons button {
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>EA FC 25 Stats</h1>
+
+  <form id="match-form">
+    <label for="tournament">Choose a Tournament:</label>
+    <select id="tournament" required>
+      <option value="rivals">Rivals</option>
+      <option value="qualification">Qualification Weekend League</option>
+      <option value="weekend_league">Weekend League</option>
+    </select>
+
+    <label for="score">Enter Score (e.g., 2:1):</label>
+    <input type="text" id="score" required placeholder="Enter score (e.g., 2:1)" />
+
+    <div id="penalty-score">
+      <label for="penalty">Enter Penalty Score (e.g., 3:2):</label>
+      <input type="text" id="penalty" placeholder="Enter penalty score (e.g., 3:2)" />
+    </div>
+
+    <button type="submit">Submit Match</button>
+  </form>
+
+  <div class="buttons">
+    <button id="delete-last">Delete Last Match</button>
+    <button id="clear-all" class="danger">Clear All Statistics</button>
+  </div>
+
+  <div id="stats" class="stats-container"></div>
+
+  <script>
+    const stats = {
+      rivals: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
+      qualification: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
+      weekend_league: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
+    };
+
+    const matchHistory = [];
+
+    const form = document.getElementById('match-form');
+    const statsDiv = document.getElementById('stats');
+    const penaltyInput = document.getElementById('penalty-score');
+    const scoreInput = document.getElementById('score');
+
+    form.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const tournamentSelect = document.getElementById('tournament');
+  const tournament = tournamentSelect.value;
+  const score = scoreInput.value.trim();
+
+  const scoreMatch = score.match(/^(\d+):(\d+)$/);
+  if (!scoreMatch) {
+    alert('Please enter a valid score in the format X:Y (e.g., 2:1).');
+    return;
+  }
+
+  const homeGoals = parseInt(scoreMatch[1], 10);
+  const awayGoals = parseInt(scoreMatch[2], 10);
+  let penaltyWinner = null;
+
+  if (tournament === 'qualification' || tournament === 'weekend_league') {
+    const penaltyScore = document.getElementById('penalty').value.trim();
+    const penaltyMatch = penaltyScore.match(/^(\d+):(\d+)$/);
+
+    if (!penaltyMatch && homeGoals === awayGoals) {
+      alert('Penalty score is required for this tournament.');
+      return;
+    }
+
+    if (penaltyMatch) {
+      const penaltyHome = parseInt(penaltyMatch[1], 10);
+      const penaltyAway = parseInt(penaltyMatch[2], 10);
+      penaltyWinner = penaltyHome > penaltyAway ? 'home' : 'away';
+    }
+  }
+
+  updateStats(tournament, homeGoals, awayGoals, penaltyWinner);
+  matchHistory.push({ tournament, homeGoals, awayGoals, penaltyWinner });
+
+  // Сохраняем выбранный турнир
+  const currentTournament = tournament;
+
+  form.reset();
+  penaltyInput.style.display = 'none';
+
+  // Восстанавливаем выбор турнира
+  tournamentSelect.value = currentTournament;
+
+  displayStats();
+});
+
+    document.getElementById('tournament').addEventListener('change', (e) => {
+      const tournament = e.target.value;
+      if (tournament === 'qualification' || tournament === 'weekend_league') {
+        penaltyInput.style.display = 'block';
+      } else {
+        penaltyInput.style.display = 'none';
+      }
+    });
+
+    function updateStats(tournament, homeGoals, awayGoals, penaltyWinner = null, isAdding = true) {
+      const tournamentStats = stats[tournament];
+      const modifier = isAdding ? 1 : -1;
+
+      if (homeGoals > awayGoals || penaltyWinner === 'home') {
+        tournamentStats.wins += modifier;
+      } else if (homeGoals < awayGoals || penaltyWinner === 'away') {
+        tournamentStats.losses += modifier;
+      } else if (tournament === 'rivals') {
+        tournamentStats.draws += modifier;
+      }
+
+      tournamentStats.goalsScored += homeGoals * modifier;
+      tournamentStats.goalsConceded += awayGoals * modifier;
+    }
+
+    function calculateOverallStats() {
+      const overall = { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 };
+      for (let tournament in stats) {
+        overall.wins += stats[tournament].wins;
+        overall.losses += stats[tournament].losses;
+        overall.draws += stats[tournament].draws;
+        overall.goalsScored += stats[tournament].goalsScored;
+        overall.goalsConceded += stats[tournament].goalsConceded;
+      }
+      return overall;
+    }
+    function formatTournamentName(name) {
+  return name.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+    function displayStats() {
+      const overall = calculateOverallStats();
+      statsDiv.innerHTML = `
+        <h2>Statistics</h2>
+        <div class="stats-container">
+          ${Object.entries(stats).map(([tournament, data]) => `
+            <div class="stat-card">
+              <h3>${formatTournamentName(tournament)}</h3>
+              <p>Wins: ${data.wins}</p>
+              <p>Losses: ${data.losses}</p>
+              ${tournament === 'rivals' ? `<p>Draws: ${data.draws}</p>` : ''}
+              <p>Goals Scored: ${data.goalsScored}</p>
+              <p>Goals Conceded: ${data.goalsConceded}</p>
+            </div>
+          `).join('')}
+          <div class="stat-card">
+            <h3>Overall</h3>
+            <p>Wins: ${overall.wins}</p>
+            <p>Losses: ${overall.losses}</p>
+            <p>Draws: ${overall.draws}</p>
+            <p>Goals Scored: ${overall.goalsScored}</p>
+            <p>Goals Conceded: ${overall.goalsConceded}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    document.getElementById('delete-last').addEventListener('click', () => {
+      if (matchHistory.length > 0) {
+        const lastMatch = matchHistory.pop();
+        updateStats(lastMatch.tournament, lastMatch.homeGoals, lastMatch.awayGoals, lastMatch.penaltyWinner, false);
+        displayStats();
+      }
+    });
+
+    document.getElementById('clear-all').addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear all statistics? This action cannot be undone.')) {
+        for (let tournament in stats) {
+          stats[tournament] = { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 };
+        }
+        matchHistory.length = 0;
+        displayStats();
+      }
+    });
+
+    displayStats();
+  </script>
+</body>
+</html>
