@@ -134,53 +134,68 @@
     const penaltyInput = document.getElementById('penalty-score');
     const scoreInput = document.getElementById('score');
 
+    function saveStats() {
+      localStorage.setItem('stats', JSON.stringify(stats));
+      localStorage.setItem('matchHistory', JSON.stringify(matchHistory));
+    }
+
+    function loadStats() {
+      const savedStats = JSON.parse(localStorage.getItem('stats'));
+      const savedHistory = JSON.parse(localStorage.getItem('matchHistory'));
+
+      if (savedStats) {
+        for (let tournament in stats) {
+          stats[tournament] = savedStats[tournament];
+        }
+      }
+
+      if (savedHistory) {
+        matchHistory.push(...savedHistory);
+      }
+    }
+
     form.addEventListener('submit', (e) => {
-  e.preventDefault();
+      e.preventDefault();
 
-  const tournamentSelect = document.getElementById('tournament');
-  const tournament = tournamentSelect.value;
-  const score = scoreInput.value.trim();
+      const tournamentSelect = document.getElementById('tournament');
+      const tournament = tournamentSelect.value;
+      const score = scoreInput.value.trim();
 
-  const scoreMatch = score.match(/^(\d+):(\d+)$/);
-  if (!scoreMatch) {
-    alert('Please enter a valid score in the format X:Y (e.g., 2:1).');
-    return;
-  }
+      const scoreMatch = score.match(/^(\d+):(\d+)$/);
+      if (!scoreMatch) {
+        alert('Please enter a valid score in the format X:Y (e.g., 2:1).');
+        return;
+      }
 
-  const homeGoals = parseInt(scoreMatch[1], 10);
-  const awayGoals = parseInt(scoreMatch[2], 10);
-  let penaltyWinner = null;
+      const homeGoals = parseInt(scoreMatch[1], 10);
+      const awayGoals = parseInt(scoreMatch[2], 10);
+      let penaltyWinner = null;
 
-  if (tournament === 'qualification' || tournament === 'weekend_league') {
-    const penaltyScore = document.getElementById('penalty').value.trim();
-    const penaltyMatch = penaltyScore.match(/^(\d+):(\d+)$/);
+      if (tournament === 'qualification' || tournament === 'weekend_league') {
+        const penaltyScore = document.getElementById('penalty').value.trim();
+        const penaltyMatch = penaltyScore.match(/^(\d+):(\d+)$/);
 
-    if (!penaltyMatch && homeGoals === awayGoals) {
-      alert('Penalty score is required for this tournament.');
-      return;
-    }
+        if (!penaltyMatch && homeGoals === awayGoals) {
+          alert('Penalty score is required for this tournament.');
+          return;
+        }
 
-    if (penaltyMatch) {
-      const penaltyHome = parseInt(penaltyMatch[1], 10);
-      const penaltyAway = parseInt(penaltyMatch[2], 10);
-      penaltyWinner = penaltyHome > penaltyAway ? 'home' : 'away';
-    }
-  }
+        if (penaltyMatch) {
+          const penaltyHome = parseInt(penaltyMatch[1], 10);
+          const penaltyAway = parseInt(penaltyMatch[2], 10);
+          penaltyWinner = penaltyHome > penaltyAway ? 'home' : 'away';
+        }
+      }
 
-  updateStats(tournament, homeGoals, awayGoals, penaltyWinner);
-  matchHistory.push({ tournament, homeGoals, awayGoals, penaltyWinner });
+      updateStats(tournament, homeGoals, awayGoals, penaltyWinner);
+      matchHistory.push({ tournament, homeGoals, awayGoals, penaltyWinner });
 
-  // Сохраняем выбранный турнир
-  const currentTournament = tournament;
+      form.reset();
+      penaltyInput.style.display = 'none';
 
-  form.reset();
-  penaltyInput.style.display = 'none';
-
-  // Восстанавливаем выбор турнира
-  tournamentSelect.value = currentTournament;
-
-  displayStats();
-});
+      saveStats();
+      displayStats();
+    });
 
     document.getElementById('tournament').addEventListener('change', (e) => {
       const tournament = e.target.value;
@@ -205,6 +220,8 @@
 
       tournamentStats.goalsScored += homeGoals * modifier;
       tournamentStats.goalsConceded += awayGoals * modifier;
+
+      saveStats();
     }
 
     function calculateOverallStats() {
@@ -218,9 +235,10 @@
       }
       return overall;
     }
+
     function formatTournamentName(name) {
-  return name.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
+      return name.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
 
     function displayStats() {
       const overall = calculateOverallStats();
@@ -253,6 +271,7 @@
       if (matchHistory.length > 0) {
         const lastMatch = matchHistory.pop();
         updateStats(lastMatch.tournament, lastMatch.homeGoals, lastMatch.awayGoals, lastMatch.penaltyWinner, false);
+        saveStats();
         displayStats();
       }
     });
@@ -263,11 +282,16 @@
           stats[tournament] = { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 };
         }
         matchHistory.length = 0;
+        saveStats();
         displayStats();
       }
     });
 
-    displayStats();
+    window.onload = () => {
+      loadStats();
+      displayStats();
+    };
   </script>
 </body>
 </html>
+
