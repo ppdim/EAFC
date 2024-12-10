@@ -89,6 +89,27 @@
     .buttons button {
       margin-right: 10px;
     }
+
+    .results-container {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f4f4f4;
+    }
   </style>
 </head>
 <body>
@@ -120,17 +141,32 @@
 
   <div id="stats" class="stats-container"></div>
 
+  <div class="results-container">
+    <h2>Match History</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Tournament</th>
+          <th>Score</th>
+          <th>Penalty</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+
   <script>
     const stats = {
-      rivals: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
-      qualification: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
-      weekend_league: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
+      rivals: { games: 0, wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
+      qualification: { games: 0, wins: 0, losses: 0, goalsScored: 0, goalsConceded: 0 },
+      weekend_league: { games: 0, wins: 0, losses: 0, goalsScored: 0, goalsConceded: 0 },
     };
 
     const matchHistory = [];
 
     const form = document.getElementById('match-form');
     const statsDiv = document.getElementById('stats');
+    const resultsBody = document.getElementById('results-body');
     const penaltyInput = document.getElementById('penalty-score');
     const scoreInput = document.getElementById('score');
 
@@ -144,8 +180,8 @@
       const savedHistory = JSON.parse(localStorage.getItem('matchHistory'));
 
       if (savedStats) {
-        for (let tournament in stats) {
-          stats[tournament] = savedStats[tournament];
+        for (let key in stats) {
+          stats[key] = savedStats[key];
         }
       }
 
@@ -157,8 +193,7 @@
     form.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      const tournamentSelect = document.getElementById('tournament');
-      const tournament = tournamentSelect.value;
+      const tournament = document.getElementById('tournament').value;
       const score = scoreInput.value.trim();
 
       const scoreMatch = score.match(/^(\d+):(\d+)$/);
@@ -169,129 +204,113 @@
 
       const homeGoals = parseInt(scoreMatch[1], 10);
       const awayGoals = parseInt(scoreMatch[2], 10);
-      let penaltyWinner = null;
 
-      if (tournament === 'qualification' || tournament === 'weekend_league') {
+      let penaltyWinner = null;
+      if ((tournament === 'qualification' || tournament === 'weekend_league') && homeGoals === awayGoals) {
         const penaltyScore = document.getElementById('penalty').value.trim();
         const penaltyMatch = penaltyScore.match(/^(\d+):(\d+)$/);
 
-        if (!penaltyMatch && homeGoals === awayGoals) {
+        if (!penaltyMatch) {
           alert('Penalty score is required for this tournament.');
           return;
         }
 
-        if (penaltyMatch) {
-          const penaltyHome = parseInt(penaltyMatch[1], 10);
-          const penaltyAway = parseInt(penaltyMatch[2], 10);
-          penaltyWinner = penaltyHome > penaltyAway ? 'home' : 'away';
-        }
+        const penaltyHome = parseInt(penaltyMatch[1], 10);
+        const penaltyAway = parseInt(penaltyMatch[2], 10);
+        penaltyWinner = penaltyHome > penaltyAway ? 'home' : 'away';
       }
 
       updateStats(tournament, homeGoals, awayGoals, penaltyWinner);
       matchHistory.push({ tournament, homeGoals, awayGoals, penaltyWinner });
 
       form.reset();
+      document.getElementById('tournament').value = tournament; // сохраняем выбранный турнир
       penaltyInput.style.display = 'none';
 
       saveStats();
       displayStats();
+      displayResults();
     });
 
-    document.getElementById('tournament').addEventListener('change', (e) => {
-      const tournament = e.target.value;
-      if (tournament === 'qualification' || tournament === 'weekend_league') {
-        penaltyInput.style.display = 'block';
-      } else {
-        penaltyInput.style.display = 'none';
-      }
-    });
-
-    function updateStats(tournament, homeGoals, awayGoals, penaltyWinner = null, isAdding = true) {
-      const tournamentStats = stats[tournament];
-      const modifier = isAdding ? 1 : -1;
-
+    function updateStats(tournament, homeGoals, awayGoals, penaltyWinner) {
+      stats[tournament].games++;
       if (homeGoals > awayGoals || penaltyWinner === 'home') {
-        tournamentStats.wins += modifier;
+        stats[tournament].wins++;
       } else if (homeGoals < awayGoals || penaltyWinner === 'away') {
-        tournamentStats.losses += modifier;
-      } else if (tournament === 'rivals') {
-        tournamentStats.draws += modifier;
+        stats[tournament].losses++;
+      } else {
+        stats[tournament].draws++;
       }
-
-      tournamentStats.goalsScored += homeGoals * modifier;
-      tournamentStats.goalsConceded += awayGoals * modifier;
-
-      saveStats();
-    }
-
-    function calculateOverallStats() {
-      const overall = { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 };
-      for (let tournament in stats) {
-        overall.wins += stats[tournament].wins;
-        overall.losses += stats[tournament].losses;
-        overall.draws += stats[tournament].draws;
-        overall.goalsScored += stats[tournament].goalsScored;
-        overall.goalsConceded += stats[tournament].goalsConceded;
-      }
-      return overall;
-    }
-
-    function formatTournamentName(name) {
-      return name.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+      stats[tournament].goalsScored += homeGoals;
+      stats[tournament].goalsConceded += awayGoals;
     }
 
     function displayStats() {
-      const overall = calculateOverallStats();
-      statsDiv.innerHTML = `
-        <h2>Statistics</h2>
-        <div class="stats-container">
-          ${Object.entries(stats).map(([tournament, data]) => `
-            <div class="stat-card">
-              <h3>${formatTournamentName(tournament)}</h3>
-              <p>Wins: ${data.wins}</p>
-              <p>Losses: ${data.losses}</p>
-              ${tournament === 'rivals' ? `<p>Draws: ${data.draws}</p>` : ''}
-              <p>Goals Scored: ${data.goalsScored}</p>
-              <p>Goals Conceded: ${data.goalsConceded}</p>
-            </div>
-          `).join('')}
+      statsDiv.innerHTML = Object.keys(stats).map((key) => {
+        const { games, wins, losses, draws, goalsScored, goalsConceded } = stats[key];
+        return `
           <div class="stat-card">
-            <h3>Overall</h3>
-            <p>Wins: ${overall.wins}</p>
-            <p>Losses: ${overall.losses}</p>
-            <p>Draws: ${overall.draws}</p>
-            <p>Goals Scored: ${overall.goalsScored}</p>
-            <p>Goals Conceded: ${overall.goalsConceded}</p>
-          </div>
-        </div>
-      `;
+            <h3>${key.replace('_', ' ').toUpperCase()}</h3>
+            <p>Games: ${games}</p>
+            <p>Wins: ${wins}</p>
+            <p>Losses: ${losses}</p>
+            ${key === 'rivals' ? `<p>Draws: ${draws}</p>` : ''}
+            <p>Goals Scored: ${goalsScored}</p>
+            <p>Goals Conceded: ${goalsConceded}</p>
+          </div>`;
+      }).join('');
+    }
+
+    function displayResults() {
+      resultsBody.innerHTML = matchHistory.map((match) => {
+        const { tournament, homeGoals, awayGoals, penaltyWinner } = match;
+        return `
+          <tr>
+            <td>${tournament.replace('_', ' ').toUpperCase()}</td>
+            <td>${homeGoals}:${awayGoals}</td>
+            <td>${penaltyWinner ? penaltyWinner.toUpperCase() : 'N/A'}</td>
+          </tr>`;
+      }).join('');
     }
 
     document.getElementById('delete-last').addEventListener('click', () => {
       if (matchHistory.length > 0) {
         const lastMatch = matchHistory.pop();
-        updateStats(lastMatch.tournament, lastMatch.homeGoals, lastMatch.awayGoals, lastMatch.penaltyWinner, false);
+        stats[lastMatch.tournament].games--;
+        if (lastMatch.homeGoals > lastMatch.awayGoals || lastMatch.penaltyWinner === 'home') {
+          stats[lastMatch.tournament].wins--;
+        } else if (lastMatch.homeGoals < lastMatch.awayGoals || lastMatch.penaltyWinner === 'away') {
+          stats[lastMatch.tournament].losses--;
+        } else {
+          stats[lastMatch.tournament].draws--;
+        }
+        stats[lastMatch.tournament].goalsScored -= lastMatch.homeGoals;
+        stats[lastMatch.tournament].goalsConceded -= lastMatch.awayGoals;
+
         saveStats();
         displayStats();
+        displayResults();
       }
     });
 
     document.getElementById('clear-all').addEventListener('click', () => {
-      if (confirm('Are you sure you want to clear all statistics? This action cannot be undone.')) {
-        for (let tournament in stats) {
-          stats[tournament] = { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 };
+      if (confirm('Are you sure you want to clear all statistics?')) {
+        for (let key in stats) {
+          stats[key] = { games: 0, wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 };
         }
         matchHistory.length = 0;
+
         saveStats();
         displayStats();
+        displayResults();
       }
     });
 
     window.onload = () => {
       loadStats();
       displayStats();
+      displayResults();
     };
   </script>
 </body>
 </html>
-
