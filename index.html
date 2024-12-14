@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EA FC 25 Stats</title>
-  <link href="https://fonts.googleapis.com/css2?family=Carme&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-color-light: #f9f9f9;
@@ -18,7 +18,7 @@
     }
 
     body {
-      font-family: 'Carme', sans-serif;
+      font-family: 'Kanit', sans-serif;
       background-color: var(--bg-color-light);
       color: var(--text-color-light);
       display: flex;
@@ -32,6 +32,12 @@
       font-weight: 400;
       text-align: center;
       margin: 20px 0;
+    }
+
+    label, select, input, button {
+      font-size: 16px;
+      line-height: 1.5;
+      margin-bottom: 10px;
     }
 
     button {
@@ -61,6 +67,35 @@
       color: var(--text-color-dark);
     }
 
+    .stats-container, .results-table {
+      width: 100%;
+      max-width: 1200px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background-color: var(--card-bg-light);
+      padding: 15px;
+      border: 1px solid var(--border-color-light);
+      border-radius: 5px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+      transition: background-color 0.3s, border-color 0.3s;
+    }
+
+    .dark-mode .stat-card {
+      background-color: var(--card-bg-dark);
+      border-color: var(--border-color-dark);
+    }
+
+    .stat-card h3, .results-table h2 {
+      margin-bottom: 10px;
+    }
+
+    .stat-card p {
+      margin: 5px 0;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -86,33 +121,26 @@
       background-color: #555;
     }
 
-    .scroll-buttons {
-      position: fixed;
-      right: 20px;
-      bottom: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .scroll-buttons button {
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      padding: 10px;
-      cursor: pointer;
-      opacity: 0.8;
-      transition: opacity 0.3s;
-    }
-
-    .scroll-buttons button:hover {
-      opacity: 1;
-    }
-
-    #penalty-section {
+    #penalty-score {
       display: none;
       margin-top: 10px;
+    }
+
+    .buttons {
+      margin-top: 20px;
+    }
+
+    .buttons button {
+      margin-right: 10px;
+    }
+
+    .delete-match {
+      background-color: #ff9800;
+      color: white;
+    }
+
+    .delete-match:hover {
+      background-color: #fb8c00;
     }
   </style>
 </head>
@@ -120,8 +148,6 @@
   <h1>EA FC 25 Stats</h1>
 
   <button id="toggle-theme">Toggle Dark Mode</button>
-
-  <button id="clear-stats" class="danger">Clear All Statistics</button>
 
   <form id="match-form">
     <label for="tournament">Choose a Tournament:</label>
@@ -132,197 +158,270 @@
     </select>
 
     <label for="score">Enter Score (e.g., 2:1):</label>
-    <input type="text" id="score" required placeholder="Enter score (e.g., 2:1)" list="score-suggestions" />
-    <datalist id="score-suggestions"></datalist>
+    <input type="text" id="score" required placeholder="Enter score (e.g., 2:1)" />
 
-    <div id="penalty-section">
-      <label for="penalty-score">Penalty Score (e.g., 4:3):</label>
-      <input type="text" id="penalty-score" placeholder="Enter penalty score (e.g., 4:3)" />
+    <div id="penalty-score">
+      <label for="penalty">Enter Penalty Score (e.g., 3:2):</label>
+      <input type="text" id="penalty" placeholder="Enter penalty score (e.g., 3:2)" />
     </div>
 
     <button type="submit">Submit Match</button>
   </form>
 
-  <div id="stats">
-    <h2>Statistics</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Tournament</th>
-          <th>Games</th>
-          <th>Wins</th>
-          <th>Losses</th>
-          <th>Draws</th>
-          <th>Goals Scored</th>
-          <th>Goals Conceded</th>
-        </tr>
-      </thead>
-      <tbody id="stats-body">
-      </tbody>
-    </table>
+  <div class="buttons">
+    <button id="delete-last">Delete Last Match</button>
+    <button id="clear-all" class="danger">Clear All Statistics</button>
   </div>
 
-  <div id="match-results">
-    <h2>Match Results</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Tournament</th>
-          <th>Score</th>
-          <th>Penalty</th>
-          <th>Date</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="results-body">
-      </tbody>
-    </table>
-  </div>
-
-  <div class="scroll-buttons">
-    <button id="scroll-up">Scroll to Top</button>
-    <button id="scroll-down">Scroll to Bottom</button>
-  </div>
+  <div id="stats" class="stats-container"></div>
+  <div id="overall-stats" class="stats-container"></div>
+  <div id="match-results" class="results-table"></div>
 
   <script>
     const stats = {
-      rivals: { games: 0, wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
-      qualification: { games: 0, wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
-      weekend_league: { games: 0, wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 },
+      rivals: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
+      qualification: { wins: 0, losses: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
+      weekend_league: { wins: 0, losses: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
     };
 
-    const results = [];
+    const matchHistory = [];
 
-    document.getElementById('toggle-theme').addEventListener('click', () => {
+    const form = document.getElementById('match-form');
+    const statsDiv = document.getElementById('stats');
+    const overallStatsDiv = document.getElementById('overall-stats');
+    const resultsTableDiv = document.getElementById('match-results');
+    const penaltyInput = document.getElementById('penalty-score');
+    const scoreInput = document.getElementById('score');
+    const tournamentInput = document.getElementById('tournament');
+    const toggleThemeBtn = document.getElementById('toggle-theme');
+
+    function saveStats() {
+      localStorage.setItem('stats', JSON.stringify(stats));
+      localStorage.setItem('matchHistory', JSON.stringify(matchHistory));
+    }
+
+    function loadStats() {
+      const savedStats = JSON.parse(localStorage.getItem('stats'));
+      const savedHistory = JSON.parse(localStorage.getItem('matchHistory'));
+
+      if (savedStats) {
+        Object.assign(stats, savedStats);
+      }
+
+      if (savedHistory) {
+        matchHistory.push(...savedHistory);
+      }
+    }
+
+    function saveTheme(isDark) {
+      localStorage.setItem('darkMode', isDark);
+    }
+
+    function loadTheme() {
+      const isDark = JSON.parse(localStorage.getItem('darkMode'));
+      if (isDark) {
+        document.body.classList.add('dark-mode');
+      }
+    }
+
+    toggleThemeBtn.addEventListener('click', () => {
       document.body.classList.toggle('dark-mode');
+      saveTheme(document.body.classList.contains('dark-mode'));
     });
 
-    document.getElementById('scroll-up').addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    document.getElementById('scroll-down').addEventListener('click', () => {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-    });
-
-    const tournamentSelect = document.getElementById('tournament');
-    const penaltySection = document.getElementById('penalty-section');
-
-    tournamentSelect.addEventListener('change', () => {
-      penaltySection.style.display = 'none';
-      document.getElementById('penalty-score').value = '';
-    });
-
-    document.getElementById('match-form').addEventListener('submit', (e) => {
+    form.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      const tournament = tournamentSelect.value;
-      const score = document.getElementById('score').value;
-      const penaltyScore = document.getElementById('penalty-score').value;
-      const [goalsScored, goalsConceded] = score.split(':').map(Number);
-      const date = new Date().toLocaleString();
+      const tournament = tournamentInput.value;
+      const score = scoreInput.value.trim();
+      const timestamp = new Date();
 
-      if (goalsScored === goalsConceded && (tournament === 'qualification' || tournament === 'weekend_league')) {
-        penaltySection.style.display = 'block';
-        if (!penaltyScore) {
-          alert('Penalty score is required for a draw in this tournament.');
+      const scoreMatch = score.match(/^\d+:\d+$/);
+      if (!scoreMatch) {
+        alert('Please enter a valid score in the format X:Y (e.g., 2:1).');
+        return;
+      }
+
+      const [homeGoals, awayGoals] = score.split(':').map(Number);
+      let penaltyWinner = null;
+
+      if ((tournament === 'qualification' || tournament === 'weekend_league') && homeGoals === awayGoals) {
+        const penaltyScore = document.getElementById('penalty').value.trim();
+        const penaltyMatch = penaltyScore.match(/^\d+:\d+$/);
+
+        if (!penaltyMatch) {
+          alert('Penalty score is required for this tournament.');
           return;
         }
+
+        const [penaltyHome, penaltyAway] = penaltyScore.split(':').map(Number);
+        penaltyWinner = penaltyHome > penaltyAway ? 'home' : 'away';
       }
 
-      const result = {
-        tournament,
-        score,
-        penalty: penaltyScore || 'N/A',
-        date,
+      updateStats(tournament, homeGoals, awayGoals, penaltyWinner);
+      matchHistory.push({ tournament, homeGoals, awayGoals, penaltyWinner, timestamp });
+
+      form.reset();
+      tournamentInput.value = tournament;
+      penaltyInput.style.display = 'none';
+
+      saveStats();
+      displayStats();
+    });
+
+    scoreInput.addEventListener('input', () => {
+      const score = scoreInput.value.trim();
+      const tournament = tournamentInput.value;
+      const scoreMatch = score.match(/^\d+:\d+$/);
+
+      if (scoreMatch) {
+        const [homeGoals, awayGoals] = score.split(':').map(Number);
+
+        if (homeGoals === awayGoals && (tournament === 'qualification' || tournament === 'weekend_league')) {
+          penaltyInput.style.display = 'block';
+        } else {
+          penaltyInput.style.display = 'none';
+        }
+      }
+    });
+
+    document.getElementById('delete-last').addEventListener('click', () => {
+      if (matchHistory.length > 0) {
+        const lastMatch = matchHistory.pop();
+        updateStats(lastMatch.tournament, lastMatch.homeGoals, lastMatch.awayGoals, lastMatch.penaltyWinner, false);
+        saveStats();
+        displayStats();
+      }
+    });
+
+    document.getElementById('clear-all').addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear all statistics? This action cannot be undone.')) {
+        for (let tournament in stats) {
+          stats[tournament] = { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0, games: 0 };
+        }
+        matchHistory.length = 0;
+        saveStats();
+        displayStats();
+      }
+    });
+
+    function deleteMatch(index) {
+      if (confirm('Are you sure you want to delete this match?')) {
+        const match = matchHistory.splice(index, 1)[0];
+        updateStats(match.tournament, match.homeGoals, match.awayGoals, match.penaltyWinner, false);
+        saveStats();
+        displayStats();
+      }
+    }
+
+    function updateStats(tournament, homeGoals, awayGoals, penaltyWinner = null, isAdding = true) {
+      const tournamentStats = stats[tournament];
+      const modifier = isAdding ? 1 : -1;
+
+      if (homeGoals > awayGoals || penaltyWinner === 'home') {
+        tournamentStats.wins += modifier;
+      } else if (homeGoals < awayGoals || penaltyWinner === 'away') {
+        tournamentStats.losses += modifier;
+      } else if (tournament === 'rivals') {
+        tournamentStats.draws += modifier;
+      }
+
+      tournamentStats.goalsScored += homeGoals * modifier;
+      tournamentStats.goalsConceded += awayGoals * modifier;
+      tournamentStats.games += modifier;
+    }
+
+    function displayStats() {
+      statsDiv.innerHTML = Object.entries(stats).map(([tournament, data]) => `
+        <div class="stat-card">
+          <h3>${formatTournamentName(tournament)}</h3>
+          <p>Games: ${data.games}</p>
+          <p>Wins: ${data.wins}</p>
+          <p>Losses: ${data.losses}</p>
+          ${tournament === 'rivals' ? `<p>Draws: ${data.draws}</p>` : ''}
+          <p>Goals Scored: ${data.goalsScored}</p>
+          <p>Goals Conceded: ${data.goalsConceded}</p>
+        </div>
+      `).join('');
+
+      const overallStats = {
+        totalGames: 0,
+        totalWins: 0,
+        totalLosses: 0,
+        totalDraws: 0,
+        totalGoalsScored: 0,
+        totalGoalsConceded: 0
       };
 
-      results.push(result);
-      stats[tournament].games += 1;
-      stats[tournament].goalsScored += goalsScored;
-      stats[tournament].goalsConceded += goalsConceded;
-
-      if (goalsScored > goalsConceded || (goalsScored === goalsConceded && penaltyScore)) {
-        stats[tournament].wins += 1;
-      } else if (goalsScored < goalsConceded) {
-        stats[tournament].losses += 1;
-      } else {
-        stats[tournament].draws += 1;
-      }
-
-      updateStatsTable();
-      updateResultsTable();
-    });
-
-    function updateStatsTable() {
-      const statsBody = document.getElementById('stats-body');
-      statsBody.innerHTML = '';
-
-      for (const tournament in stats) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${tournament}</td>
-          <td>${stats[tournament].games}</td>
-          <td>${stats[tournament].wins}</td>
-          <td>${stats[tournament].losses}</td>
-          <td>${stats[tournament].draws}</td>
-          <td>${stats[tournament].goalsScored}</td>
-          <td>${stats[tournament].goalsConceded}</td>
-        `;
-        statsBody.appendChild(row);
-      }
-    }
-
-    function updateResultsTable() {
-      const resultsBody = document.getElementById('results-body');
-      resultsBody.innerHTML = '';
-
-      results.forEach((result, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${index + 1}</td>
-          <td>${result.tournament}</td>
-          <td>${result.score}</td>
-          <td>${result.penalty}</td>
-          <td>${result.date}</td>
-          <td><button class="danger" onclick="deleteResult(${index})">Delete</button></td>
-        `;
-        resultsBody.appendChild(row);
+      // Calculate overall statistics for all tournaments
+      Object.values(stats).forEach((tournamentStats) => {
+        overallStats.totalGames += tournamentStats.games;
+        overallStats.totalWins += tournamentStats.wins;
+        overallStats.totalLosses += tournamentStats.losses;
+        overallStats.totalDraws += tournamentStats.draws || 0;
+        overallStats.totalGoalsScored += tournamentStats.goalsScored;
+        overallStats.totalGoalsConceded += tournamentStats.goalsConceded;
       });
+
+      // Display the overall stats
+      overallStatsDiv.innerHTML = `
+        <div class="stat-card">
+          <h3>Overall Stats</h3>
+          <p>Total Games: ${overallStats.totalGames}</p>
+          <p>Total Wins: ${overallStats.totalWins}</p>
+          <p>Total Losses: ${overallStats.totalLosses}</p>
+          <p>Total Draws: ${overallStats.totalDraws}</p>
+          <p>Total Goals Scored: ${overallStats.totalGoalsScored}</p>
+          <p>Total Goals Conceded: ${overallStats.totalGoalsConceded}</p>
+        </div>
+      `;
+
+      // Display match results table
+      resultsTableDiv.innerHTML = `
+        <h2>Match Results</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Tournament</th>
+              <th>Score</th>
+              <th>Penalty</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${matchHistory.map((match, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${formatTournamentName(match.tournament)}</td>
+                <td>${match.homeGoals}:${match.awayGoals}</td>
+                <td>${match.penaltyWinner ? match.penaltyWinner : '-'}</td>
+                <td>${new Date(match.timestamp).toLocaleDateString()}</td>
+                <td>${new Date(match.timestamp).toLocaleTimeString()}</td>
+                <td><button class="delete-match" onclick="deleteMatch(${index})">-</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
     }
 
-    function deleteResult(index) {
-      const result = results[index];
-      const [goalsScored, goalsConceded] = result.score.split(':').map(Number);
-
-      stats[result.tournament].games -= 1;
-      stats[result.tournament].goalsScored -= goalsScored;
-      stats[result.tournament].goalsConceded -= goalsConceded;
-
-      if (goalsScored > goalsConceded || (goalsScored === goalsConceded && result.penalty !== 'N/A')) {
-        stats[result.tournament].wins -= 1;
-      } else if (goalsScored < goalsConceded) {
-        stats[result.tournament].losses -= 1;
-      } else {
-        stats[result.tournament].draws -= 1;
+    // Format tournament name for display
+    function formatTournamentName(tournament) {
+      switch (tournament) {
+        case 'rivals': return 'Rivals';
+        case 'qualification': return 'Qualification Weekend League';
+        case 'weekend_league': return 'Weekend League';
+        default: return tournament;
       }
-
-      results.splice(index, 1);
-      updateStatsTable();
-      updateResultsTable();
     }
 
-    document.getElementById('clear-stats').addEventListener('click', () => {
-      if (confirm('Are you sure you want to clear all statistics and match results?')) {
-        for (const tournament in stats) {
-          stats[tournament] = { games: 0, wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0 };
-        }
-        results.length = 0;
-        updateStatsTable();
-        updateResultsTable();
-      }
-    });
+    // Initialize the app
+    loadStats();
+    loadTheme();
+    displayStats();
   </script>
 </body>
 </html>
