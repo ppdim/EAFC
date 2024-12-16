@@ -65,26 +65,6 @@
       max-width: 1200px;
       margin-top: 20px;
     }
-    .stat-card {
-      background-color: var(--card-bg-light);
-      padding: 15px;
-      border: 1px solid var(--border-color-light);
-      border-radius: 5px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      margin-bottom: 20px;
-      transition: background-color 0.3s, border-color 0.3s;
-    }
-    .dark-mode .stat-card {
-      background-color: var(--card-bg-dark);
-      border-color: var(--border-color-dark);
-    }
-
-    .stat-card h3, .results-table h2 {
-      margin-bottom: 10px;
-    }
-    .stat-card p {
-      margin: 5px 0;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -142,6 +122,15 @@
     #scroll-down {
       bottom: 20px;
     }
+    /* Стиль для общего фона */
+    .overall-stats-row {
+      font-weight: bold;
+      background-color: #ddd;
+    }
+    .dark-mode .overall-stats-row {
+      background-color: #555;
+      color: var(--text-color-dark);
+    }
   </style>
 </head>
 <body>
@@ -168,12 +157,36 @@
     <button id="clear-all" class="danger">Clear All Statistics</button>
   </div>
   <div id="stats" class="stats-container"></div>
-  <div id="overall-stats" class="stats-container"></div>
-  <div id="match-results" class="results-table"></div>
+  <div id="match-results" class="results-table">
+    <h2>Match Results</h2>
+    <div class="filter-buttons">
+      <label for="filter-tournament">Filter by Tournament:</label>
+      <select id="filter-tournament">
+        <option value="all">All</option>
+        <option value="rivals">Rivals</option>
+        <option value="qualification">Qualification Weekend League</option>
+        <option value="weekend_league">Weekend League</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tournament</th>
+          <th>Score</th>
+          <th>Penalty</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="match-results-body"></tbody>
+    </table>
+  </div>
   <!-- Кнопки прокрутки -->
   <button id="scroll-up" class="scroll-button">Scroll Up</button>
   <button id="scroll-down" class="scroll-button">Scroll Down</button>
-  <script>
+<script>
     const stats = {
       rivals: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
       qualification: { wins: 0, losses: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
@@ -182,7 +195,6 @@
     const matchHistory = [];
     const form = document.getElementById('match-form');
     const statsDiv = document.getElementById('stats');
-    const overallStatsDiv = document.getElementById('overall-stats');
     const resultsTableDiv = document.getElementById('match-results');
     const penaltyInput = document.getElementById('penalty-score');
     const scoreInput = document.getElementById('score');
@@ -321,18 +333,11 @@
       tournamentStats.games += modifier;
     }
 
-    function displayStats() {
-      statsDiv.innerHTML = Object.entries(stats).map(([tournament, data]) => `
-        <div class="stat-card">
-          <h3>${formatTournamentName(tournament)}</h3>
-          <p>Games: ${data.games}</p>
-          <p>Wins: ${data.wins}</p>
-          <p>Losses: ${data.losses}</p>
-          ${tournament === 'rivals' ? `<p>Draws: ${data.draws}</p>` : ''}
-          <p>Goals Scored: ${data.goalsScored}</p>
-          <p>Goals Conceded: ${data.goalsConceded}</p>
-        </div>
-      `).join('');
+    document.getElementById('filter-tournament').addEventListener('change', (e) => {
+      displayStats(e.target.value);
+    });
+
+    function displayStats(filterTournament = 'all') {
       const overallStats = {
         totalGames: 0,
         totalWins: 0,
@@ -341,27 +346,70 @@
         totalGoalsScored: 0,
         totalGoalsConceded: 0
       };
-      Object.values(stats).forEach((tournamentStats) => {
-        overallStats.totalGames += tournamentStats.games;
-        overallStats.totalWins += tournamentStats.wins;
-        overallStats.totalLosses += tournamentStats.losses;
-        overallStats.totalDraws += tournamentStats.draws || 0;
-        overallStats.totalGoalsScored += tournamentStats.goalsScored;
-        overallStats.totalGoalsConceded += tournamentStats.goalsConceded;
+      const filteredStats = Object.entries(stats).map(([tournament, data]) => {
+        overallStats.totalGames += data.games;
+        overallStats.totalWins += data.wins;
+        overallStats.totalLosses += data.losses;
+        overallStats.totalDraws += data.draws || 0;
+        overallStats.totalGoalsScored += data.goalsScored;
+        overallStats.totalGoalsConceded += data.goalsConceded;
+        return { tournament, ...data };
       });
-      overallStatsDiv.innerHTML = `
-        <div class="stat-card">
-          <h3>Overall Stats</h3>
-          <p>Total Games: ${overallStats.totalGames}</p>
-          <p>Total Wins: ${overallStats.totalWins}</p>
-          <p>Total Losses: ${overallStats.totalLosses}</p>
-          <p>Total Draws: ${overallStats.totalDraws}</p>
-          <p>Total Goals Scored: ${overallStats.totalGoalsScored}</p>
-          <p>Total Goals Conceded: ${overallStats.totalGoalsConceded}</p>
-        </div>
+
+      statsDiv.innerHTML = `
+        <h3>Statistics by Tournament</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Tournament</th>
+              <th>Games</th>
+              <th>Wins</th>
+              <th>Losses</th>
+              <th>Draws</th>
+              <th>Goals Scored</th>
+              <th>Goals Conceded</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredStats.map(stat => `
+              <tr>
+                <td>${formatTournamentName(stat.tournament)}</td>
+                <td>${stat.games}</td>
+                <td>${stat.wins}</td>
+                <td>${stat.losses}</td>
+                <td>${stat.tournament === 'rivals' ? stat.draws : '-'}</td>
+                <td>${stat.goalsScored}</td>
+                <td>${stat.goalsConceded}</td>
+              </tr>
+            `).join('')}
+            <tr class="overall-stats-row">
+              <td>Overall</td>
+              <td>${overallStats.totalGames}</td>
+              <td>${overallStats.totalWins}</td>
+              <td>${overallStats.totalLosses}</td>
+              <td>${overallStats.totalDraws}</td>
+              <td>${overallStats.totalGoalsScored}</td>
+              <td>${overallStats.totalGoalsConceded}</td>
+            </tr>
+          </tbody>
+        </table>
       `;
+
+      let filteredMatchHistory = matchHistory;
+      if (filterTournament !== 'all') {
+        filteredMatchHistory = matchHistory.filter(match => match.tournament === filterTournament);
+      }
       resultsTableDiv.innerHTML = `
         <h2>Match Results</h2>
+        <div class="filter-buttons">
+          <label for="filter-tournament">Filter by Tournament:</label>
+          <select id="filter-tournament">
+            <option value="all">All</option>
+            <option value="rivals">Rivals</option>
+            <option value="qualification">Qualification Weekend League</option>
+            <option value="weekend_league">Weekend League</option>
+          </select>
+        </div>
         <table>
           <thead>
             <tr>
@@ -374,8 +422,8 @@
               <th>Action</th>
             </tr>
           </thead>
-          <tbody>
-            ${matchHistory.map((match, index) => `
+          <tbody id="match-results-body">
+            ${filteredMatchHistory.map((match, index) => `
               <tr>
                 <td>${index + 1}</td>
                 <td>${formatTournamentName(match.tournament)}</td>
@@ -389,6 +437,11 @@
           </tbody>
         </table>
       `;
+
+      // Обновление обработчика события для фильтра
+      document.getElementById('filter-tournament').addEventListener('change', (e) => {
+        displayStats(e.target.value);
+      });
     }
 
     function formatTournamentName(tournament) {
@@ -432,5 +485,3 @@
     loadTheme();
     displayStats();
   </script>
-</body>
-</html>
