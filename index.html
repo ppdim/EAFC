@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EA FC 25 Stats</title>
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400&display=swap" rel="stylesheet">
+  <!-- Подключение шрифта Carme -->
+  <link href="https://fonts.googleapis.com/css2?family=Carme&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-color-light: #f9f9f9;
@@ -16,9 +17,8 @@
       --border-color-light: #ddd;
       --border-color-dark: #555;
     }
-
     body {
-      font-family: 'Kanit', sans-serif;
+      font-family: 'Carme', sans-serif; /* Использование шрифта Carme */
       background-color: var(--bg-color-light);
       color: var(--text-color-light);
       display: flex;
@@ -27,13 +27,11 @@
       padding: 20px;
       transition: background-color 0.3s, color 0.3s;
     }
-
     h1 {
       font-weight: 400;
       text-align: center;
       margin: 20px 0;
     }
-
     label, select, input, button {
       font-size: 16px;
       line-height: 1.5;
@@ -49,30 +47,24 @@
       border: none;
       border-radius: 5px;
     }
-
     button:hover {
       background-color: #45a049;
     }
-
     .danger {
       background-color: #f44336;
     }
-
     .danger:hover {
       background-color: #e53935;
     }
-
     .dark-mode {
       background-color: var(--bg-color-dark);
       color: var(--text-color-dark);
     }
-
     .stats-container, .results-table {
       width: 100%;
       max-width: 1200px;
       margin-top: 20px;
     }
-
     .stat-card {
       background-color: var(--card-bg-light);
       padding: 15px;
@@ -82,7 +74,6 @@
       margin-bottom: 20px;
       transition: background-color 0.3s, border-color 0.3s;
     }
-
     .dark-mode .stat-card {
       background-color: var(--card-bg-dark);
       border-color: var(--border-color-dark);
@@ -91,64 +82,71 @@
     .stat-card h3, .results-table h2 {
       margin-bottom: 10px;
     }
-
     .stat-card p {
       margin: 5px 0;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
     }
-
     th, td {
       border: 1px solid var(--border-color-light);
       padding: 8px;
       text-align: center;
     }
-
     .dark-mode th, .dark-mode td {
       border-color: var(--border-color-dark);
     }
-
     th {
       background-color: #f4f4f4;
       font-weight: bold;
     }
-
     .dark-mode th {
       background-color: #555;
     }
-
     #penalty-score {
       display: none;
       margin-top: 10px;
     }
-
     .buttons {
       margin-top: 20px;
     }
-
     .buttons button {
       margin-right: 10px;
     }
-
     .delete-match {
       background-color: #ff9800;
       color: white;
     }
-
     .delete-match:hover {
       background-color: #fb8c00;
+    }
+    /* Кнопки прокрутки */
+    .scroll-button {
+      position: fixed;
+      right: 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      padding: 10px;
+    }
+    .scroll-button:hover {
+      background-color: #45a049;
+    }
+    #scroll-up {
+      bottom: 70px;
+    }
+    #scroll-down {
+      bottom: 20px;
     }
   </style>
 </head>
 <body>
   <h1>EA FC 25 Stats</h1>
-
   <button id="toggle-theme">Toggle Dark Mode</button>
-
   <form id="match-form">
     <label for="tournament">Choose a Tournament:</label>
     <select id="tournament" required>
@@ -156,36 +154,32 @@
       <option value="qualification">Qualification Weekend League</option>
       <option value="weekend_league">Weekend League</option>
     </select>
-
     <label for="score">Enter Score (e.g., 2:1):</label>
-    <input type="text" id="score" required placeholder="Enter score (e.g., 2:1)" />
-
+    <input type="text" id="score" required placeholder="Enter score (e.g., 2:1)" list="score-suggestions" />
+    <datalist id="score-suggestions"></datalist>
     <div id="penalty-score">
       <label for="penalty">Enter Penalty Score (e.g., 3:2):</label>
       <input type="text" id="penalty" placeholder="Enter penalty score (e.g., 3:2)" />
     </div>
-
     <button type="submit">Submit Match</button>
   </form>
-
   <div class="buttons">
     <button id="delete-last">Delete Last Match</button>
     <button id="clear-all" class="danger">Clear All Statistics</button>
   </div>
-
   <div id="stats" class="stats-container"></div>
   <div id="overall-stats" class="stats-container"></div>
   <div id="match-results" class="results-table"></div>
-
+  <!-- Кнопки прокрутки -->
+  <button id="scroll-up" class="scroll-button">Scroll Up</button>
+  <button id="scroll-down" class="scroll-button">Scroll Down</button>
   <script>
     const stats = {
       rivals: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
       qualification: { wins: 0, losses: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
       weekend_league: { wins: 0, losses: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
     };
-
     const matchHistory = [];
-
     const form = document.getElementById('match-form');
     const statsDiv = document.getElementById('stats');
     const overallStatsDiv = document.getElementById('overall-stats');
@@ -194,6 +188,8 @@
     const scoreInput = document.getElementById('score');
     const tournamentInput = document.getElementById('tournament');
     const toggleThemeBtn = document.getElementById('toggle-theme');
+    const scrollUpBtn = document.getElementById('scroll-up');
+    const scrollDownBtn = document.getElementById('scroll-down');
 
     function saveStats() {
       localStorage.setItem('stats', JSON.stringify(stats));
@@ -203,11 +199,9 @@
     function loadStats() {
       const savedStats = JSON.parse(localStorage.getItem('stats'));
       const savedHistory = JSON.parse(localStorage.getItem('matchHistory'));
-
       if (savedStats) {
         Object.assign(stats, savedStats);
       }
-
       if (savedHistory) {
         matchHistory.push(...savedHistory);
       }
@@ -231,20 +225,16 @@
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-
       const tournament = tournamentInput.value;
       const score = scoreInput.value.trim();
       const timestamp = new Date();
-
       const scoreMatch = score.match(/^\d+:\d+$/);
       if (!scoreMatch) {
         alert('Please enter a valid score in the format X:Y (e.g., 2:1).');
         return;
       }
-
       const [homeGoals, awayGoals] = score.split(':').map(Number);
       let penaltyWinner = null;
-
       if ((tournament === 'qualification' || tournament === 'weekend_league') && homeGoals === awayGoals) {
         const penaltyScore = document.getElementById('penalty').value.trim();
         const penaltyMatch = penaltyScore.match(/^\d+:\d+$/);
@@ -253,18 +243,14 @@
           alert('Penalty score is required for this tournament.');
           return;
         }
-
         const [penaltyHome, penaltyAway] = penaltyScore.split(':').map(Number);
         penaltyWinner = penaltyHome > penaltyAway ? 'home' : 'away';
       }
-
       updateStats(tournament, homeGoals, awayGoals, penaltyWinner);
       matchHistory.push({ tournament, homeGoals, awayGoals, penaltyWinner, timestamp });
-
       form.reset();
       tournamentInput.value = tournament;
       penaltyInput.style.display = 'none';
-
       saveStats();
       displayStats();
     });
@@ -273,10 +259,8 @@
       const score = scoreInput.value.trim();
       const tournament = tournamentInput.value;
       const scoreMatch = score.match(/^\d+:\d+$/);
-
       if (scoreMatch) {
         const [homeGoals, awayGoals] = score.split(':').map(Number);
-
         if (homeGoals === awayGoals && (tournament === 'qualification' || tournament === 'weekend_league')) {
           penaltyInput.style.display = 'block';
         } else {
@@ -305,6 +289,14 @@
       }
     });
 
+    scrollUpBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    scrollDownBtn.addEventListener('click', () => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+
     function deleteMatch(index) {
       if (confirm('Are you sure you want to delete this match?')) {
         const match = matchHistory.splice(index, 1)[0];
@@ -317,7 +309,6 @@
     function updateStats(tournament, homeGoals, awayGoals, penaltyWinner = null, isAdding = true) {
       const tournamentStats = stats[tournament];
       const modifier = isAdding ? 1 : -1;
-
       if (homeGoals > awayGoals || penaltyWinner === 'home') {
         tournamentStats.wins += modifier;
       } else if (homeGoals < awayGoals || penaltyWinner === 'away') {
@@ -325,7 +316,6 @@
       } else if (tournament === 'rivals') {
         tournamentStats.draws += modifier;
       }
-
       tournamentStats.goalsScored += homeGoals * modifier;
       tournamentStats.goalsConceded += awayGoals * modifier;
       tournamentStats.games += modifier;
@@ -343,7 +333,6 @@
           <p>Goals Conceded: ${data.goalsConceded}</p>
         </div>
       `).join('');
-
       const overallStats = {
         totalGames: 0,
         totalWins: 0,
@@ -352,8 +341,6 @@
         totalGoalsScored: 0,
         totalGoalsConceded: 0
       };
-
-      // Calculate overall statistics for all tournaments
       Object.values(stats).forEach((tournamentStats) => {
         overallStats.totalGames += tournamentStats.games;
         overallStats.totalWins += tournamentStats.wins;
@@ -362,8 +349,6 @@
         overallStats.totalGoalsScored += tournamentStats.goalsScored;
         overallStats.totalGoalsConceded += tournamentStats.goalsConceded;
       });
-
-      // Display the overall stats
       overallStatsDiv.innerHTML = `
         <div class="stat-card">
           <h3>Overall Stats</h3>
@@ -375,8 +360,6 @@
           <p>Total Goals Conceded: ${overallStats.totalGoalsConceded}</p>
         </div>
       `;
-
-      // Display match results table
       resultsTableDiv.innerHTML = `
         <h2>Match Results</h2>
         <table>
@@ -408,7 +391,6 @@
       `;
     }
 
-    // Format tournament name for display
     function formatTournamentName(tournament) {
       switch (tournament) {
         case 'rivals': return 'Rivals';
@@ -418,7 +400,34 @@
       }
     }
 
-    // Initialize the app
+    // Сохранение и загрузка истории ввода счета
+    let scoreHistory = [];
+
+    document.getElementById("match-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const scoreInput = document.getElementById("score");
+      const scoreValue = scoreInput.value.trim();
+      if (scoreValue && !scoreHistory.includes(scoreValue)) {
+        scoreHistory.push(scoreValue);
+        updateScoreSuggestions();
+      }
+
+      scoreInput.value = "";
+    });
+
+    function updateScoreSuggestions() {
+      const dataList = document.getElementById("score-suggestions");
+      dataList.innerHTML = ""; // Очищаем старые подсказки
+
+      scoreHistory.forEach((score) => {
+        const option = document.createElement("option");
+        option.value = score;
+        dataList.appendChild(option);
+      });
+    }
+
+    // Инициализация приложения
     loadStats();
     loadTheme();
     displayStats();
