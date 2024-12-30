@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EA FC 25 Stats</title>
-  <!-- Подключение шрифта Carme -->
   <link href="https://fonts.googleapis.com/css2?family=Carme&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -18,7 +17,7 @@
       --border-color-dark: #555;
     }
     body {
-      font-family: 'Carme', sans-serif; /* Использование шрифта Carme */
+      font-family: 'Carme', sans-serif;
       background-color: var(--bg-color-light);
       color: var(--text-color-light);
       display: flex;
@@ -37,7 +36,6 @@
       line-height: 1.5;
       margin-bottom: 10px;
     }
-
     button {
       font-weight: bold;
       padding: 10px 20px;
@@ -102,7 +100,6 @@
     .delete-match:hover {
       background-color: #fb8c00;
     }
-    /* Кнопки прокрутки */
     .scroll-button {
       position: fixed;
       right: 20px;
@@ -122,7 +119,6 @@
     #scroll-down {
       bottom: 20px;
     }
-    /* Стиль для общего фона */
     .overall-stats-row {
       font-weight: bold;
       background-color: #ddd;
@@ -153,7 +149,6 @@
     <button type="submit">Submit Match</button>
   </form>
   <div class="buttons">
-    <button id="delete-last">Delete Last Match</button>
     <button id="clear-all" class="danger">Clear All Statistics</button>
   </div>
   <div id="stats" class="stats-container"></div>
@@ -183,10 +178,9 @@
       <tbody id="match-results-body"></tbody>
     </table>
   </div>
-  <!-- Кнопки прокрутки -->
   <button id="scroll-up" class="scroll-button">Scroll Up</button>
   <button id="scroll-down" class="scroll-button">Scroll Down</button>
-<script>
+  <script>
     const stats = {
       rivals: { wins: 0, losses: 0, draws: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
       qualification: { wins: 0, losses: 0, goalsScored: 0, goalsConceded: 0, games: 0 },
@@ -203,53 +197,35 @@
     const scrollUpBtn = document.getElementById('scroll-up');
     const scrollDownBtn = document.getElementById('scroll-down');
 
-    function saveStats() {
-      localStorage.setItem('stats', JSON.stringify(stats));
-      localStorage.setItem('matchHistory', JSON.stringify(matchHistory));
-    }
+    // Сохранение и загрузка истории ввода счета
+    let scoreHistory = [];
 
-    function loadStats() {
-      const savedStats = JSON.parse(localStorage.getItem('stats'));
-      const savedHistory = JSON.parse(localStorage.getItem('matchHistory'));
-      if (savedStats) {
-        Object.assign(stats, savedStats);
-      }
-      if (savedHistory) {
-        matchHistory.push(...savedHistory);
-      }
-    }
-
-    function saveTheme(isDark) {
-      localStorage.setItem('darkMode', isDark);
-    }
-
-    function loadTheme() {
-      const isDark = JSON.parse(localStorage.getItem('darkMode'));
-      if (isDark) {
-        document.body.classList.add('dark-mode');
-      }
-    }
-
-    toggleThemeBtn.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      saveTheme(document.body.classList.contains('dark-mode'));
-    });
-
-    form.addEventListener('submit', (e) => {
+    document.getElementById("match-form").addEventListener("submit", function (e) {
       e.preventDefault();
+
+      const scoreInput = document.getElementById("score");
+      const scoreValue = scoreInput.value.trim();
+      if (scoreValue && !scoreHistory.includes(scoreValue)) {
+        scoreHistory.push(scoreValue);
+        updateScoreSuggestions();
+        saveScoreHistory(); // Сохранение после обновления
+      }
+
       const tournament = tournamentInput.value;
-      const score = scoreInput.value.trim();
       const timestamp = new Date();
-      const scoreMatch = score.match(/^\d+:\d+$/);
+      console.log('Score input:', scoreValue); // Лог для отладки
+      const scoreMatch = scoreValue.match(/^\d+:\d+$/);
       if (!scoreMatch) {
         alert('Please enter a valid score in the format X:Y (e.g., 2:1).');
         return;
       }
-      const [homeGoals, awayGoals] = score.split(':').map(Number);
+      const [homeGoals, awayGoals] = scoreValue.split(':').map(Number);
       let penaltyWinner = null;
       if ((tournament === 'qualification' || tournament === 'weekend_league') && homeGoals === awayGoals) {
         const penaltyScore = document.getElementById('penalty').value.trim();
+        penaltyInput.style.display = 'block';
         const penaltyMatch = penaltyScore.match(/^\d+:\d+$/);
+        console.log('Penalty input:', penaltyScore); // Лог для отладки
 
         if (!penaltyMatch) {
           alert('Penalty score is required for this tournament.');
@@ -281,13 +257,50 @@
       }
     });
 
-    document.getElementById('delete-last').addEventListener('click', () => {
-      if (matchHistory.length > 0) {
-        const lastMatch = matchHistory.pop();
-        updateStats(lastMatch.tournament, lastMatch.homeGoals, lastMatch.awayGoals, lastMatch.penaltyWinner, false);
-        saveStats();
-        displayStats();
+    // Сохранение истории ввода счета в локальное хранилище
+    function saveScoreHistory() {
+      localStorage.setItem('scoreHistory', JSON.stringify(scoreHistory));
+    }
+
+    // Загрузка истории ввода счета из локального хранилища
+    function loadScoreHistory() {
+      const savedHistory = JSON.parse(localStorage.getItem('scoreHistory'));
+      if (savedHistory) {
+        scoreHistory = savedHistory;
+        updateScoreSuggestions();
       }
+    }
+
+    function saveStats() {
+      localStorage.setItem('stats', JSON.stringify(stats));
+      localStorage.setItem('matchHistory', JSON.stringify(matchHistory));
+    }
+
+    function loadStats() {
+      const savedStats = JSON.parse(localStorage.getItem('stats'));
+      const savedHistory = JSON.parse(localStorage.getItem('matchHistory'));
+      if (savedStats) {
+        Object.assign(stats, savedStats);
+      }
+      if (savedHistory) {
+        matchHistory.push(...savedHistory);
+      }
+    }
+
+    function saveTheme(isDark) {
+      localStorage.setItem('darkMode', isDark);
+    }
+
+    function loadTheme() {
+      const isDark = JSON.parse(localStorage.getItem('darkMode'));
+      if (isDark) {
+        document.body.classList.add('dark-mode');
+      }
+    }
+
+    toggleThemeBtn.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+      saveTheme(document.body.classList.contains('dark-mode'));
     });
 
     document.getElementById('clear-all').addEventListener('click', () => {
@@ -344,8 +357,10 @@
         totalLosses: 0,
         totalDraws: 0,
         totalGoalsScored: 0,
-        totalGoalsConceded: 0
+        totalGoalsConceded: 0,
+        winRate: 0 // Добавили win rate
       };
+
       const filteredStats = Object.entries(stats).map(([tournament, data]) => {
         overallStats.totalGames += data.games;
         overallStats.totalWins += data.wins;
@@ -355,6 +370,13 @@
         overallStats.totalGoalsConceded += data.goalsConceded;
         return { tournament, ...data };
       });
+
+      // Рассчитайте win rate
+      if (overallStats.totalGames > 0) {
+        overallStats.winRate = ((overallStats.totalWins / overallStats.totalGames) * 100).toFixed(2);
+      } else {
+        overallStats.winRate = 0;
+      }
 
       statsDiv.innerHTML = `
         <h3>Statistics by Tournament</h3>
@@ -368,6 +390,7 @@
               <th>Draws</th>
               <th>Goals Scored</th>
               <th>Goals Conceded</th>
+              <th>Win Rate (%)</th> <!-- Добавьте колонку win rate -->
             </tr>
           </thead>
           <tbody>
@@ -380,6 +403,7 @@
                 <td>${stat.tournament === 'rivals' ? stat.draws : '-'}</td>
                 <td>${stat.goalsScored}</td>
                 <td>${stat.goalsConceded}</td>
+                <td>${((stat.wins / stat.games) * 100).toFixed(2)}</td> <!-- Рассчитайте и добавьте win rate для каждого турнира -->
               </tr>
             `).join('')}
             <tr class="overall-stats-row">
@@ -390,6 +414,7 @@
               <td>${overallStats.totalDraws}</td>
               <td>${overallStats.totalGoalsScored}</td>
               <td>${overallStats.totalGoalsConceded}</td>
+              <td>${overallStats.winRate}</td> <!-- Добавьте общий win rate -->
             </tr>
           </tbody>
         </table>
@@ -453,35 +478,11 @@
       }
     }
 
-    // Сохранение и загрузка истории ввода счета
-    let scoreHistory = [];
-
-    document.getElementById("match-form").addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      const scoreInput = document.getElementById("score");
-      const scoreValue = scoreInput.value.trim();
-      if (scoreValue && !scoreHistory.includes(scoreValue)) {
-        scoreHistory.push(scoreValue);
-        updateScoreSuggestions();
-      }
-
-      scoreInput.value = "";
-    });
-
-    function updateScoreSuggestions() {
-      const dataList = document.getElementById("score-suggestions");
-      dataList.innerHTML = ""; // Очищаем старые подсказки
-
-      scoreHistory.forEach((score) => {
-        const option = document.createElement("option");
-        option.value = score;
-        dataList.appendChild(option);
-      });
-    }
-
     // Инициализация приложения
+    loadScoreHistory(); // Загружаем историю ввода счета
     loadStats();
     loadTheme();
     displayStats();
   </script>
+</body>
+</html>
